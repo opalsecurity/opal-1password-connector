@@ -30,6 +30,10 @@ jobs:
       - uses: azure/setup-helm@1a275c3b69536ee54be43f2070a358922e12c8d4 # v4.3.1
       - run: helm lint charts/opal-1password-connector --set fake=true --set secret.opalSigningSecret=ci
       - run: helm template ci charts/opal-1password-connector --set fake=true --set secret.opalSigningSecret=ci
+      - name: Chart supplies op from the pinned 1password/op image
+        run: |
+          helm template ci charts/opal-1password-connector --set fake=true --set secret.opalSigningSecret=ci \
+            | grep -E 'image: "1password/op:[0-9.]+@sha256:[0-9a-f]{64}"'
 
   docker:
     runs-on: ubuntu-latest
@@ -44,3 +48,24 @@ jobs:
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # The image doesn't bundle `op`; check the Compose wiring supplies the pinned CLI on PATH.
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          platforms: linux/amd64
+          load: true
+          tags: ghcr.io/opalsecurity/opal-1password-connector:ci
+          cache-from: type=gha
+      - name: Compose smoke test
+        working-directory: deploy/docker-compose
+        env:
+          CONNECTOR_VERSION: ci
+        run: |
+          printf 'OP_FAKE=1\nOPAL_SIGNING_SECRET=%s\n' "$(openssl rand -hex 32)" > .env
+          docker compose up -d --wait connector
+          test "$(docker compose exec -T connector op --version)" = "$(grep -oE '1password/op:[0-9.]+' docker-compose.yml | cut -d: -f2)"
+          curl -fsS http://127.0.0.1:8080/healthz
+          # Re-running op-cli (an upgrade) must succeed while an `op daemon` holds the binary open.
+          docker compose exec -T connector op account list --format=json
+          docker compose up -d --wait connector
+          ! docker run --rm --entrypoint sh ghcr.io/opalsecurity/opal-1password-connector:ci -c 'test -e /usr/local/bin/op'

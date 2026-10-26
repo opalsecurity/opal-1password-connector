@@ -71,8 +71,9 @@ type Error struct {
 func (e *Error) Error() string { return fmt.Sprintf("%s: %s", e.Kind, e.Stderr) }
 func (e *Error) Unwrap() error { return e.Kind }
 
-// stderrKinds is ordered: the first matching substring wins. The strings are pinned to the `op`
-// version in the Dockerfile; every entry is covered by runner_test.go.
+// stderrKinds is ordered: the first matching substring wins. The strings are pinned to the
+// 1password/op image version in the Helm chart and Compose file; every entry is covered by
+// runner_test.go.
 var stderrKinds = []struct {
 	substr string
 	kind   error

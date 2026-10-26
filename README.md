@@ -68,10 +68,18 @@ secret and prints the command to read it; for Docker, use `openssl rand -hex 32`
 Then **Import assets** to bring in vaults and groups. Vault access shows up per bundle under each vault's
 **User Access** tab, and grants and revokes from Opal call `op vault user grant/revoke`.
 
+The connector image doesn't include the 1Password CLI. Each deployment option below copies `op` from
+1Password's official [`1password/op`](https://hub.docker.com/r/1password/op) image, pinned by version and
+digest, into a volume on the connector's `PATH`. Hosts need to reach Docker Hub as well as GHCR; to use a
+registry mirror, override the image repository (Helm: `opCli.image.repository`).
+
+Pick a version from the [releases page](https://github.com/opalsecurity/opal-1password-connector/releases)
+and use it wherever `<version>` appears below.
+
 ### Option 1: Helm (Kubernetes)
 
 ```bash
-helm install op-connector oci://ghcr.io/opalsecurity/charts/opal-1password-connector \
+helm install op-connector oci://ghcr.io/opalsecurity/charts/opal-1password-connector --version <version> \
   --namespace opal-1password-connector --create-namespace \
   --set accountAddress=example.1password.com \
   --set secret.opEmail=<admin email> \
@@ -91,8 +99,10 @@ helm install op-connector oci://ghcr.io/opalsecurity/charts/opal-1password-conne
 ```bash
 cd deploy/docker-compose
 cp .env.example .env && $EDITOR .env
-CONNECTOR_DOMAIN=op.example.com docker compose --profile https up -d
+CONNECTOR_VERSION=<version> CONNECTOR_DOMAIN=op.example.com docker compose --profile https up -d
 ```
+
+A one-shot `op-cli` service copies the 1Password CLI into the `op-bin` volume before the connector starts.
 
 Caddy gets a Let's Encrypt certificate for `CONNECTOR_DOMAIN`, which must point at the VM with ports 80
 and 443 open. Without `--profile https`, the connector listens on `127.0.0.1:8080` only, for use behind
@@ -101,11 +111,31 @@ your own load balancer.
 ### Option 3: Docker
 
 ```bash
-docker run -d --name op-connector -p 8080:8080 -v op-data:/data --env-file .env \
-  ghcr.io/opalsecurity/opal-1password-connector:latest
+# Copy the 1Password CLI from 1Password's official image into a volume (same pin as the Compose file).
+docker run --rm --user 0 -v op-bin:/opt/op --entrypoint sh \
+  1password/op:2.34.0@sha256:2aafc9794ab8d4062d0ac46c18760dc18c9c1dfe2e888ee61c3fa1ad340b5c28 \
+  -c 'cp /usr/local/bin/op /opt/op/op.new && mv -f /opt/op/op.new /opt/op/op'
+docker run -d --name op-connector --restart unless-stopped -p 127.0.0.1:8080:8080 \
+  -v op-data:/data -v op-bin:/opt/op:ro --env-file .env \
+  ghcr.io/opalsecurity/opal-1password-connector:<version>
 ```
 
 Put it behind your own HTTPS termination.
+
+### Upgrading
+
+Device trust lives on the data volume, so an upgrade doesn't need a new 2FA bootstrap.
+
+```bash
+# Helm
+helm upgrade op-connector oci://ghcr.io/opalsecurity/charts/opal-1password-connector --version <version> \
+  --namespace opal-1password-connector --reuse-values
+# Docker Compose (re-runs op-cli, so the CLI follows the pin in the new compose file)
+CONNECTOR_VERSION=<version> docker compose pull && CONNECTOR_VERSION=<version> docker compose up -d
+```
+
+With plain Docker, re-run both commands above with the new version after `docker rm -f op-connector`,
+keeping the `op-data` and `op-bin` volumes.
 
 ### 2FA and device bootstrap
 
@@ -191,10 +221,14 @@ Images and charts are signed with keyless [cosign](https://docs.sigstore.dev/) f
 release workflow:
 
 ```bash
-cosign verify ghcr.io/opalsecurity/opal-1password-connector:<version> \
-  --certificate-identity-regexp 'https://github.com/opalsecurity/opal-1password-connector/.github/workflows/release.yml@.*' \
-  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+for ref in opal-1password-connector charts/opal-1password-connector; do
+  cosign verify "ghcr.io/opalsecurity/${ref}:<version>" \
+    --certificate-identity-regexp 'https://github.com/opalsecurity/opal-1password-connector/.github/workflows/release.yml@.*' \
+    --certificate-oidc-issuer https://token.actions.githubusercontent.com
+done
 ```
+
+The 1Password CLI comes from 1Password's own image, pinned by digest in the chart and Compose file.
 
 ### Health check
 

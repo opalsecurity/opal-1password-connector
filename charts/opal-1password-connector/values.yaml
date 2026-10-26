@@ -5,6 +5,16 @@ image:
   pullPolicy: IfNotPresent
 imagePullSecrets: []
 
+# The 1Password CLI, copied by an init container from 1Password's official image at deploy time; the
+# connector image doesn't bundle it. Pinned on purpose: the connector classifies `op` errors by their
+# wording, so other versions are unsupported. To use a registry mirror, override repository only.
+opCli:
+  image:
+    repository: 1password/op
+    tag: "2.34.0"
+    digest: sha256:2aafc9794ab8d4062d0ac46c18760dc18c9c1dfe2e888ee61c3fa1ad340b5c28
+    pullPolicy: IfNotPresent
+
 # Each replica is its own 1Password device with its own volume. With 2FA on the identity, bootstrap
 # every pod by hand once (README: "High availability"). A pod stays unready until it can sign in.
 replicaCount: 1
