@@ -1,0 +1,11 @@
+{
+  "generateInterfaces": true,
+  "enumClassPrefix": true,
+  "isGoSubmodule": true,
+  "packageName": "onepasswordconnector",
+  "apiPath": "onepasswordconnector",
+  "gitHost": "github.com",
+  "gitUserId": "opalsecurity",
+  "gitRepoId": "opal-1password-connector",
+  "serverPort": "8080"
+}

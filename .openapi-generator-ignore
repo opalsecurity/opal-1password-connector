@@ -1,0 +1,9 @@
+# Hand-written files the generator must not overwrite.
+main.go
+go.mod
+go.sum
+Dockerfile
+README.md
+onepasswordconnector/api_*.go
+onepasswordconnector/routers.go
+onepasswordconnector/README.md

@@ -1,0 +1,16 @@
+The 1Password connector is running as {{ include "connector.fullname" . }} in namespace {{ .Release.Namespace }}.
+
+In Opal, open Add App → 1Password and set:
+  Base URL:       {{ if .Values.ingress.enabled }}https://{{ .Values.ingress.host }}{{ else }}https://<an HTTPS URL that routes to service {{ include "connector.fullname" . }}:{{ .Values.service.port }}>{{ end }}
+  Signing Secret: paste the output of
+    kubectl -n {{ .Release.Namespace }} get secret {{ include "connector.secretName" . }} -o jsonpath='{.data.OPAL_SIGNING_SECRET}' | base64 -d
+
+Check it locally:
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "connector.fullname" . }} 8080:{{ .Values.service.port }}
+  curl -i http://localhost:8080/healthz
+{{- if gt (int .Values.replicaCount) 1 }}
+
+Running {{ .Values.replicaCount }} replicas: each pod ({{ include "connector.fullname" . }}-0, -1, ...) is its own
+1Password device. If the identity uses 2FA, bootstrap each pod by hand once (README: "High availability");
+a pod gets no traffic until it can sign in, and the next pod starts only once the previous one is ready.
+{{- end }}
