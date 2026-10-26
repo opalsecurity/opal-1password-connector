@@ -1,0 +1,5 @@
+.secrets
+op-config/
+/opal-1password-connector
+.secrets.fake
+deploy/docker-compose/.env

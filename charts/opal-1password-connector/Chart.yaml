@@ -1,0 +1,10 @@
+apiVersion: v2
+name: opal-1password-connector
+description: Opal custom connector for 1Password. Lets Opal govern vault access and group membership while the 1Password admin credential stays in your environment.
+type: application
+version: 0.2.0
+appVersion: "0.1.0"
+home: https://github.com/opalsecurity/opal-1password-connector
+sources:
+  - https://github.com/opalsecurity/opal-1password-connector
+keywords: [opal, 1password, custom-connector]

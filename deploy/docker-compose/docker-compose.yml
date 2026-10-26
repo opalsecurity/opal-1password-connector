@@ -1,0 +1,30 @@
+# Quick start on a single VM:
+#   cp .env.example .env && $EDITOR .env
+#   docker compose up -d                                              # HTTP on 127.0.0.1:8080
+#   CONNECTOR_DOMAIN=op.example.com docker compose --profile https up -d  # public HTTPS via Caddy
+services:
+  connector:
+    image: ghcr.io/opalsecurity/opal-1password-connector:${CONNECTOR_VERSION:-latest}
+    env_file: .env
+    volumes:
+      - op-data:/data
+    ports:
+      - "127.0.0.1:8080:8080"
+    restart: unless-stopped
+
+  # Terminates TLS with an automatic Let's Encrypt certificate. CONNECTOR_DOMAIN must resolve to this host,
+  # with ports 80 and 443 open to Opal.
+  caddy:
+    image: caddy:2
+    profiles: [https]
+    command: caddy reverse-proxy --from ${CONNECTOR_DOMAIN:-} --to connector:8080
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy-data:/data
+    restart: unless-stopped
+
+volumes:
+  op-data:
+  caddy-data:

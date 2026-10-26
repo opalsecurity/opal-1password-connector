@@ -1,0 +1,76 @@
+image:
+  repository: ghcr.io/opalsecurity/opal-1password-connector
+  # Defaults to the chart's appVersion.
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Each replica is its own 1Password device with its own volume. With 2FA on the identity, bootstrap
+# every pod by hand once (README: "High availability"). A pod stays unready until it can sign in.
+replicaCount: 1
+
+# Sign-in address of the 1Password account, e.g. example.1password.com.
+accountAddress: ""
+
+# Serve an in-memory demo account instead of a real 1Password account (smoke tests only).
+fake: false
+
+secret:
+  # Set create=false and existingSecret=<name> to manage the Secret yourself. It must contain the keys
+  # OPAL_SIGNING_SECRET, OP_EMAIL, OP_SECRET_KEY and OP_PASSWORD.
+  create: true
+  existingSecret: ""
+  # Leave empty to have the chart generate one on install and keep it across upgrades (paste it into Opal;
+  # see the install notes). Set it explicitly with `helm template`-based GitOps tools such as Argo CD,
+  # where the chart can't read the existing Secret and would generate a new one on every render.
+  opalSigningSecret: ""
+  # The dedicated 1Password admin identity the connector signs in as.
+  opEmail: ""
+  opSecretKey: ""
+  opPassword: ""
+
+extraEnv: []
+
+# Holds OP_CONFIG_DIR (1Password device trust). Losing it forces a new-device sign-in; with 2FA,
+# re-run the bootstrap in the README ("2FA and device bootstrap").
+persistence:
+  size: 1Gi
+  storageClass: ""
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: ""
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 256Mi
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  fsGroupChangePolicy: OnRootMismatch
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
