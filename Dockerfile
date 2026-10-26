@@ -1,5 +1,5 @@
 # Cross-compiles on the build host for each target platform.
-FROM --platform=$BUILDPLATFORM golang:1.26 AS build
+FROM --platform=$BUILDPLATFORM golang:1.27 AS build
 ARG TARGETOS TARGETARCH
 ARG VERSION=dev
 WORKDIR /src
