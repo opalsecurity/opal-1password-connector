@@ -31,6 +31,17 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      # Copies `op` from 1Password's official image into a shared volume on the connector's PATH.
+      initContainers:
+        - name: op-cli
+          image: "{{ .Values.opCli.image.repository }}:{{ .Values.opCli.image.tag }}{{ with .Values.opCli.image.digest }}@{{ . }}{{ end }}"
+          imagePullPolicy: {{ .Values.opCli.image.pullPolicy }}
+          command: ["cp", "/usr/local/bin/op", "/opt/op/op"]
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          volumeMounts:
+            - name: op-bin
+              mountPath: /opt/op
       containers:
         - name: connector
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
@@ -74,6 +85,12 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
+            - name: op-bin
+              mountPath: /opt/op
+              readOnly: true
+      volumes:
+        - name: op-bin
+          emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

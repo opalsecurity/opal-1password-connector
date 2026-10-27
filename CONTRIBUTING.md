@@ -22,5 +22,7 @@ Don't edit them by hand. Files the generator must leave alone are listed in `.op
 ## Pull requests
 
 - Keep changes focused, and add or update tests in `internal/op` or `onepasswordconnector/server_test.go`.
-- `op` stderr classification is pinned to the CLI version in the `Dockerfile`. If you bump it, check
-  the strings in `internal/op/runner.go` against the new version.
+- `op` stderr classification is pinned to the `1password/op` image version in
+  `charts/opal-1password-connector/values.yaml` and `deploy/docker-compose/docker-compose.yml`. If you
+  bump it, update both (tag and digest) and check the strings in `internal/op/runner.go` against the
+  new version.

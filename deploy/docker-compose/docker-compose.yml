@@ -3,11 +3,25 @@
 #   docker compose up -d                                              # HTTP on 127.0.0.1:8080
 #   CONNECTOR_DOMAIN=op.example.com docker compose --profile https up -d  # public HTTPS via Caddy
 services:
+  # Copies the 1Password CLI from 1Password's official image into a volume the connector mounts; the
+  # connector image doesn't bundle it. Pinned: the connector classifies `op` errors by their wording.
+  op-cli:
+    image: 1password/op:2.34.0@sha256:2aafc9794ab8d4062d0ac46c18760dc18c9c1dfe2e888ee61c3fa1ad340b5c28
+    user: "0" # the fresh named volume is root-owned
+    # Copy then rename: a running `op daemon` makes overwriting /opt/op/op in place fail ("Text file busy").
+    entrypoint: ["sh", "-c", "cp /usr/local/bin/op /opt/op/op.new && chmod 0555 /opt/op/op.new && mv -f /opt/op/op.new /opt/op/op"]
+    volumes:
+      - op-bin:/opt/op
+
   connector:
     image: ghcr.io/opalsecurity/opal-1password-connector:${CONNECTOR_VERSION:-latest}
     env_file: .env
+    depends_on:
+      op-cli:
+        condition: service_completed_successfully
     volumes:
       - op-data:/data
+      - op-bin:/opt/op:ro
     ports:
       - "127.0.0.1:8080:8080"
     restart: unless-stopped
@@ -27,4 +41,5 @@ services:
 
 volumes:
   op-data:
+  op-bin:
   caddy-data:
